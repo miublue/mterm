@@ -8,6 +8,7 @@ GtkWidget *term;
 GdkRGBA palette[16];
 PangoFontDescription *font;
 double font_scale = 1;
+double resize_scale = 1.1;
 
 char term_cmd[500] = {0};
 
@@ -26,6 +27,7 @@ static char*
 get_cwd(VteTerminal *term)
 {
     // spawns new terminal in cwd if sourced /etc/profile.d/vte-2.91.sh in .bashrc
+    // can't get this shit to work for some reason qwq
     const char *uri;
 
     if (term) {
@@ -100,14 +102,11 @@ key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
     else if (TERM_KEY(GDK_KEY_V)) {
         vte_terminal_paste_clipboard(VTE_TERMINAL(term));
     }
-    else if (TERM_KEY(GDK_KEY_Return)) {
-        system(term_cmd);
-    }
     else if (TERM_KEY(GDK_KEY_plus)) {
-        set_font_scale(font_scale * 1.2);
+        set_font_scale(font_scale * resize_scale);
     }
     else if (TERM_KEY(GDK_KEY_underscore)) {
-        set_font_scale(font_scale / 1.2);
+        set_font_scale(font_scale / resize_scale);
     }
     else if (TERM_KEY(GDK_KEY_BackSpace)) {
         set_font_scale(1);

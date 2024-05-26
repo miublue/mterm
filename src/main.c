@@ -10,11 +10,8 @@ PangoFontDescription *font;
 double font_scale = 1;
 double resize_scale = 1.1;
 
-char term_cmd[500] = {0};
-
-// TODO: run a command on terminal at startup eg. term htop
-char *cmd[] = { "/bin/bash", NULL };
-const char *default_font = "ShureTechMono Nerd Font 16";
+char *cmd[16] = { "/bin/bash", NULL };
+const char *default_font = "ShureTechMono Nerd Font 15";
 const char *colors[16] = {
     "#101010", "#ec6c85", "#666666", "#AAAAAA",
     "#ec6c85", "#AAAAAA", "#666666", "#EEEEEE",
@@ -23,22 +20,6 @@ const char *colors[16] = {
 };
 #define TERM_KEY(k) (event->keyval == (k) && modifiers == (GDK_CONTROL_MASK|GDK_SHIFT_MASK))
 
-static char*
-get_cwd(VteTerminal *term)
-{
-    // spawns new terminal in cwd if sourced /etc/profile.d/vte-2.91.sh in .bashrc
-    // can't get this shit to work for some reason qwq
-    const char *uri;
-
-    if (term) {
-        uri = vte_terminal_get_current_directory_uri(term);
-        if (uri) {
-            return g_filename_from_uri(uri, NULL, NULL);
-        }
-    }
-
-    return NULL;
-}
 
 static void
 set_font_scale(double scale)
@@ -69,17 +50,15 @@ setup_terminal(VteTerminal *term)
         gdk_rgba_parse(palette + i, colors[i]);
     }
 
-    const char *cwd = get_cwd(term);
-
     vte_terminal_spawn_async(
         term, VTE_PTY_DEFAULT,
-        cwd, cmd, NULL,
+        NULL, cmd, NULL,
         G_SPAWN_DEFAULT,
         NULL, NULL, NULL,
         -1,
         NULL, NULL, NULL);
 
-    vte_terminal_set_cursor_blink_mode(term, VTE_CURSOR_BLINK_ON);
+    vte_terminal_set_cursor_blink_mode(term, VTE_CURSOR_BLINK_OFF);
     vte_terminal_set_colors(term, &palette[15], &palette[0], palette, 16);
     vte_terminal_set_font(term, font);
     vte_terminal_set_bold_is_bright(term, TRUE);
@@ -120,10 +99,14 @@ key_press(GtkWidget *widget, GdkEventKey *event, gpointer user_data)
 int
 main(int argc, char **argv)
 {
-    memcpy(term_cmd, argv[0], strlen(argv[0]));
-    strcat(term_cmd, " &");
-
     gtk_init(&argc, &argv);
+    // TODO: check boundaries... or nah
+    if (argc > 1) {
+        cmd[1] = "-c";
+        for (int i = 1; i < argc; ++i) {
+            cmd[i+1] = argv[i];
+        }
+    }
 
     window = GTK_WINDOW(gtk_window_new(GTK_WINDOW_TOPLEVEL));
     gtk_window_set_default_size(window, 900, 540);

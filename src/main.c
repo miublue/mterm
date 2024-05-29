@@ -1,7 +1,8 @@
 #include <gtk/gtk.h>
+#include <gdk/gdkx.h>
+#include <X11/Xlib.h>
 #include <vte/vte.h>
 #include <pango/pango.h>
-#include <stdlib.h>
 
 GtkWindow *window;
 GtkWidget *term;
@@ -10,6 +11,8 @@ PangoFontDescription *font;
 double font_scale = 1;
 double resize_scale = 1.1;
 
+char *embed = NULL;
+char *cwd = NULL;
 char *cmd[16] = { "/bin/bash", NULL };
 const char *default_font = "ShureTechMono Nerd Font 15";
 const char *colors[16] = {
@@ -18,8 +21,8 @@ const char *colors[16] = {
     "#101010", "#ec6c85", "#666666", "#AAAAAA",
     "#ec6c85", "#AAAAAA", "#666666", "#EEEEEE",
 };
-#define TERM_KEY(k) (event->keyval == (k) && modifiers == (GDK_CONTROL_MASK|GDK_SHIFT_MASK))
 
+#define TERM_KEY(k) (event->keyval == (k) && modifiers == (GDK_CONTROL_MASK|GDK_SHIFT_MASK))
 
 static void
 set_font_scale(double scale)
@@ -52,7 +55,7 @@ setup_terminal(VteTerminal *term)
 
     vte_terminal_spawn_async(
         term, VTE_PTY_DEFAULT,
-        NULL, cmd, NULL,
+        cwd, cmd, NULL,
         G_SPAWN_DEFAULT,
         NULL, NULL, NULL,
         -1,
@@ -100,11 +103,23 @@ int
 main(int argc, char **argv)
 {
     gtk_init(&argc, &argv);
+
     // TODO: check boundaries... or nah
     if (argc > 1) {
-        cmd[1] = "-c";
         for (int i = 1; i < argc; ++i) {
-            cmd[i+1] = argv[i];
+            if (strcmp(argv[i], "-d") == 0) {
+                cwd = argv[++i];
+            }
+            else if (strcmp(argv[i], "-w") == 0) {
+                embed = argv[++i];
+            }
+            else {
+                cmd[1] = "-c";
+                for (int j = i; j < argc; ++j) {
+                    cmd[j-i+2] = argv[j];
+                }
+                break;
+            }
         }
     }
 
@@ -122,6 +137,13 @@ main(int argc, char **argv)
 
     gtk_widget_show_all(GTK_WIDGET(window));
     gtk_widget_grab_focus(term);
+
+    Window parent;
+    if (embed && (parent = strtol(embed, NULL, 0))) {
+        Display *display = gdk_x11_display_get_xdisplay(gdk_display_get_default());
+        Window xwindow = gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(window)));
+        XReparentWindow(display, xwindow, parent, 0, 0);
+    }
 
     gtk_main();
     return 0;
